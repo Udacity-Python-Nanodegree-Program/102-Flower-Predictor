@@ -8,6 +8,7 @@ __pycache__/
 
 # Custom
 flowers
+*.pth
 
 # Distribution / packaging
 .Python
