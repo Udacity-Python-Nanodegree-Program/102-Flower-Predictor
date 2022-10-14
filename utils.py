@@ -3,13 +3,12 @@ from collections import OrderedDict
 
 import torch
 from torchvision import transforms, datasets, models
-from torchvision.datasets.vision import data
 
 from model_constants import MEAN, STD
 
 from PIL import Image
 
-def get_model(arch="vgg19", hidden_units=5000):
+def get_model(arch, hidden_units):
     arch = getattr(models, arch)
     model = arch(pretrained=True)
     # model = models.vgg19(pretrained=True)
@@ -17,12 +16,12 @@ def get_model(arch="vgg19", hidden_units=5000):
     for param in model.parameters():
         param.requires_grad = False
 
-    if hidden_units > 1000:
+    if int(hidden_units) > 1000:
         classifier = nn.Sequential(OrderedDict([
-            ('fc1', nn.Linear(25088, hidden_units)),
+            ('fc1', nn.Linear(25088, int(hidden_units))),
             ('relu', nn.ReLU()),
             ('dropout1', nn.Dropout(p=0.3)),
-            ('fc2', nn.Linear(hidden_units, 1000)),
+            ('fc2', nn.Linear(int(hidden_units), 1000)),
             ('relu2', nn.ReLU()),
             ('dropout2', nn.Dropout(p=0.2)),
             ('fc3', nn.Linear(1000, 102)),
@@ -30,10 +29,10 @@ def get_model(arch="vgg19", hidden_units=5000):
         ]))
     else:
             classifier = nn.Sequential(OrderedDict([
-            ('fc1', nn.Linear(25088, hidden_units)),
+            ('fc1', nn.Linear(25088, int(hidden_units))),
             ('relu', nn.ReLU()),
             ('dropout2', nn.Dropout(p=0.2)),
-            ('fc3', nn.Linear(hidden_units, 102)),
+            ('fc3', nn.Linear(int(hidden_units), 102)),
             ('output', nn.LogSoftmax(dim=1)),
         ]))
 
@@ -94,6 +93,36 @@ def get_idx_to_class(class_to_idx):
     return idx_to_class
 
 
+
+def save_checkpoint(model, arch, idx_to_class, hidden_units, device, filepath):
+    model.to("cpu")
+    checkpoint = {
+        'arch': arch,
+        'idx_to_class': idx_to_class,
+        'state_dict': model.state_dict(),
+        'hidden_units': hidden_units
+        # if you want to train again
+    #     'optim_dict': optimizer.state_dict(), 
+        # 'epochs': epochs
+    }
+    torch.save(checkpoint, filepath+f"checkpoint_{arch}.pth")
+    model.to(device)
+
+
+# -----------------FOR PREDICTION----------------------------
+
+def load_checkpoint(device, filepath='checkpoint_vgg19.pth'):
+    # print(filepath)
+    checkpoint = torch.load(filepath)
+    
+    hidden_units = checkpoint['hidden_units']
+    model = get_model(checkpoint['arch'], hidden_units)
+    model.idx_to_class = checkpoint['idx_to_class']
+    model.load_state_dict(checkpoint['state_dict'])
+    
+    model.to(device)
+    return model
+
 def process_image(image_path, mean, std):
     ''' Scales, crops, and normalizes a PIL image for a PyTorch model,
         returns an Numpy array
@@ -107,26 +136,3 @@ def process_image(image_path, mean, std):
                     ])
     
     return transformer(image)
-
-
-def load_checkpoint(filepath='checkpoint1.pth'):
-    checkpoint = torch.load(filepath)
-    
-    model = get_model(checkpoint['arch'])
-    model.class_to_idx = checkpoint['class_to_idx']
-    model.load_state_dict(checkpoint['state_dict'])
-    
-    return model
-
-def save_checkpoint(model, class_to_idx, hidden_units, filepath='checkpoint1.pth'):
-    model.to("cpu")
-    checkpoint = {
-        'arch': "vgg19",
-        'class_to_idx': class_to_idx,
-        'state_dict': model.state_dict(),
-        'hidden_units': hidden_units
-        # if you want to train again
-    #     'optim_dict': optimizer.state_dict(), 
-        # 'epochs': epochs
-    }
-    torch.save(checkpoint, filepath)
