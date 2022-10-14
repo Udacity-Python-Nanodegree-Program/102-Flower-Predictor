@@ -13,7 +13,7 @@ def get_cat_to_name(category_names):
                 cat_to_name = json.load(f)
         return cat_to_name
 
-def predict(image_path, model, class_to_idx, topk=5):
+def predict(image_path, model, topk=5):
     ''' Predict the class (or classes) of an image using a trained deep learning model.
     '''
     # our model takes in batches so introduce a new shape
@@ -55,8 +55,8 @@ def get_handlers():
 
 if __name__ == "__main__":
     handlers = get_handlers()
-    print("handlers is", handlers)
     top_k = int(handlers.get('top_k', 5))
+    
     input_file = handlers['input_file']
     checkpoint = handlers['check']
     
